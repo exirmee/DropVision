@@ -4,7 +4,6 @@ from tkinter import ttk
 from tkinter import *
 import cv2
 import threading
-import dropVision
 import sys
 import sett
 from configobj import ConfigObj
