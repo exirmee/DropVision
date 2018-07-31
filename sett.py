@@ -6,11 +6,11 @@ from configobj import ConfigObj
 from tkinter import *
 from tkinter import ttk
 from tkinter import filedialog
-class sett:
+class sett():
     def __init__(self, window, window_title):
         self.window = window
         self.window.title(window_title)
-        
+
         # create the main sections of the layout, 
         # and lay them out
         self.left = Frame(window)
@@ -30,18 +30,18 @@ class sett:
         self.brightslider = tk.Scale(window, from_=0, to=255, orient="horizontal")
         self.brightslider.pack(in_=self.right)
         
+        #scale widget for Analysis Speed in second
+        self.lbl4=tk.Label(window,text="Analysis Speed(ms)")
+        self.lbl4.pack(in_=self.right)
+        self.SpeedText=tk.Scale(window,from_=1,to=2000,orient="horizontal")
+        self.SpeedText.pack(in_=self.right)
+  
         #chekbox widget for niddle is top or down 
         self.lbl3=tk.Label(window,text="Niddle Position")
         self.lbl3.pack(in_=self.right)
         self.dsCombo=ttk.Combobox(window, state="readonly",value=['top', 'down'])  
         self.dsCombo.pack(in_=self.right)
         
-        #textbox widget for Analysis Speed in second
-        self.lbl4=tk.Label(window,text="Analysis Speed(ms)")
-        self.lbl4.pack(in_=self.right)
-        self.SpeedVar=StringVar()
-        self.SpeedText=tk.Entry(window,textvariable=self.SpeedVar)
-        self.SpeedText.pack(in_=self.right)
 
         #submit button for changes 
         self.btnSave=tk.Button(window,text="save changes!",command=self._do_config)
@@ -54,13 +54,17 @@ class sett:
         self.thSlider.set(self.config["cannyth1"])
         self.brightslider.set(self.config["bright"])
         self.dsCombo.set(self.config["Ds"])
-        self.SpeedVar.set(self.config["interval"])
+        self.SpeedText.set(self.config["interval"])
 
         self.window.mainloop()
     def _do_config(self):
-        print('')
-
-    def fire(self):
-        sett(tk.Tk(), "DropVision Setting")
+        config=ConfigObj('conf.cnf')
+        config['cannyth1']=self.thSlider.get()
+        config['bright']=self.brightslider.get()
+        config['Ds']=self.dsCombo.get()
+        config['interval']=self.SpeedText.get()
+        config.write()
+    def fire():
+        sett(tk.Tk(), "setting")
 
 

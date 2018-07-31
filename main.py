@@ -5,7 +5,8 @@ from tkinter import *
 import cv2
 import threading
 import sys
-import sett
+from sett import sett
+from sett import  ALL
 from configobj import ConfigObj
 import PIL.Image, PIL.ImageTk
 from PIL import Image
@@ -114,7 +115,8 @@ class App:
         
         
         # After it is called once, the update method will be automatically called every delay milliseconds
-        self.delay = self.config["interval"]
+        #---------------------------------------
+        
         self.update()
         self.root.mainloop()
         self.client_reset()
@@ -139,9 +141,9 @@ class App:
         if self.analysis_switch==True:
             self.satrtButton["text"]="Start Analysis"
             self.analysis_switch=False
-        sett()
+        sett.fire()
 
-        
+    #start analysis job and change button text    
     def threadCap(self):
         if self.analysis_switch:
             self.satrtButton["text"]="Start Analysis"
@@ -152,6 +154,7 @@ class App:
             self.root.after(self.delay, self.update)
 
         Do_Analysis()
+    
     # open save dialouge and save csv file 
     def startRec(self):
         print(self.csvList)
@@ -164,10 +167,7 @@ class App:
 
         copyfile(self.experimentVar.get()+'.csv', f+'.csv')
 
-    # save captured frame in a file 
-    def startCapture():
-        cap_switch=True
-
+    #reset everythong in form
     def client_reset(self):
         self.satrtButton["text"]="Start Analysis"
         self.analysis_switch=False
@@ -180,6 +180,7 @@ class App:
         self.tree.delete(*self.tree.get_children())
         self.csvList.clear()
     
+    #capture a frame into jpeg file
     def snapshot(self):
         # Get a frame from the video source
         ret, frame = self.vid.get_frame()
@@ -188,10 +189,11 @@ class App:
         if ret:
             cv2.imwrite(f + ".jpg", frame)
     
+    #get frame from video and do the analysis and return it to the monitor
     def update(self):
         #read configuration file and put it to config array
         config = ConfigObj('conf.cnf')
-        
+        self.delay = self.config["interval"]
         # Get a frame from the video source
         ret, frame = self.vid.get_frame()
         
@@ -221,7 +223,13 @@ class App:
         cv2.CHAIN_APPROX_NONE)
         cnts = cnts[0] if imutils.is_cv2() else cnts[1]
         c = max(cnts, key=cv2.contourArea)
-        cv2.drawContours(frame, [c], 0, (0,255,0), 1)
+        #cv2.drawContours(frame, [c], 0, (0,255,0), 1)
+        # if the contour is not sufficiently large, ignore it
+        for c in cnts:
+	        # if the contour is not sufficiently large, ignore it
+            if cv2.contourArea(c) < ratio:
+                continue
+        cv2.drawContours(frame,c, 0, (0, 255, 0), 2)
 
         # determine the most extreme points along the contour
         deRight = tuple(c[c[:, :, 0].argmax()][0])
@@ -281,7 +289,7 @@ class App:
             self.tree.insert("" , 0, values=(str(datetime.datetime.now().time().strftime('%H:%M:%S')),str(IFT)))
             self.csvList.append([str(datetime.datetime.now().time().strftime('%H:%M:%S')),str(IFT)])
         if ret:
-            self.photo = PIL.ImageTk.PhotoImage(image = PIL.Image.fromarray(edged))
+            self.photo = PIL.ImageTk.PhotoImage(image = PIL.Image.fromarray(frame))
             self.canvas.create_image(0, 0, image = self.photo, anchor = tk.NW)
             self.canvas.bind("<Button-1>",self.DoCalibrate)
         
@@ -291,6 +299,7 @@ class App:
         #clear the config object
         ConfigObj.clear(config)
 
+#get video streaming path and set the frame width and height 
 class Do_Analysis:
     def __init__(self, video_source=0):
         
