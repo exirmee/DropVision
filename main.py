@@ -17,6 +17,7 @@ import datetime
 import csv
 from tkinter import filedialog
 from shutil import copyfile
+import matplotlib.pyplot as plt
 
 class App:
     def __init__(self, root, window_title, video_source=0):
@@ -88,7 +89,9 @@ class App:
         # creating start record expriment button to excel
         self.recButton = Button(root,  text="Export CSV",width=18, padx="2", pady="3",command=self.startRec)
         self.recButton.pack(in_=self.right)
-
+        # 33333333333333333333333333333333
+        self.chartButton = Button(root,  text="Show Chart",width=18, padx="2", pady="3",command=self.show_chart)
+        self.chartButton.pack(in_=self.right)
         # creating start record expriment button to excel
         self.captureButton = Button(self.root,  text="Capture Frame",width=18, padx="2", pady="3",command=self.snapshot)
         self.captureButton.pack(in_=self.right)
@@ -116,10 +119,15 @@ class App:
         
         # After it is called once, the update method will be automatically called every delay milliseconds
         #---------------------------------------
-        
+
         self.update()
         self.root.mainloop()
         self.client_reset()
+    def show_chart(self):
+        newdata = np.squeeze(self.csvList) # Shape is now: (10, 80)
+        plt.plot(newdata) # plotting by columns
+        plt.show()
+    
     #reset p1 and p2 values and show calibrat message
     def showCalibrate(self):
         self.config["p1x"]="0"
@@ -158,14 +166,14 @@ class App:
     # open save dialouge and save csv file 
     def startRec(self):
         print(self.csvList)
-        f =  filedialog.asksaveasfilename(initialdir = "/",title = "Select file",filetypes = (("csv files","*.csv"),("all files","*.*")))
-        csvFile = open(self.experimentVar.get()+'.csv', 'w')
-        print(csvFile)
-        with csvFile:
-            writer = csv.writer(self.csvList)
-            writer.writerows(self.csvList)
+        f =  (filedialog.asksaveasfilename(initialdir = "/",title = "Select file",filetypes = (("csv files","*.csv"),("all files","*.*"))))+'.csv'
+       
+        
+        with open(self.experimentVar.get()+'.csv', 'w', newline='') as csvfile:
+            spamwriter = csv.writer(csvfile, delimiter=',',quotechar='|', quoting=csv.QUOTE_MINIMAL)
+            spamwriter.writerows(self.csvList)
 
-        copyfile(self.experimentVar.get()+'.csv', f+'.csv')
+        copyfile(self.experimentVar.get()+'.csv', f)
 
     #reset everythong in form
     def client_reset(self):
@@ -225,10 +233,6 @@ class App:
         c = max(cnts, key=cv2.contourArea)
         #cv2.drawContours(frame, [c], 0, (0,255,0), 1)
         # if the contour is not sufficiently large, ignore it
-        for c in cnts:
-	        # if the contour is not sufficiently large, ignore it
-            if cv2.contourArea(c) < ratio:
-                continue
         cv2.drawContours(frame,c, 0, (0, 255, 0), 2)
 
         # determine the most extreme points along the contour
