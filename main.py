@@ -30,7 +30,7 @@ class App:
         self.config = ConfigObj('conf.cnf')
         
         #open video source (by default this will try to open the computer webcam)
-        self.vid = Do_Analysis(self.config["path"])
+        self.vid = Do_Analysis(int(self.config["path"]))
      
         # create the main sections of the layout, and lay them out
         self.top=Frame(self.root)
@@ -41,73 +41,74 @@ class App:
         self.top.pack(side=TOP)
         self.left.pack(side=LEFT)
         self.right.pack(side=RIGHT)
-        
-        #experiment name label and text box
-        self.experimentVar=StringVar()
-        self.experimentLabel=ttk.Label(self.root,text="Experiment Name")
-        self.experimentLabel.pack(in_=self.right)
-        self.experimentText=ttk.Entry(self.root,width=16,textvariable=self.experimentVar)
-        self.experimentText.pack(in_=self.right)
-        self.experimentVar.set("myExpriment")
-
+        self.subtop1=Frame(self.top)
+        self.subtop2=Frame(self.top)
+        self.subtop3=Frame(self.top)
+        self.subtop4=Frame(self.top)
+        self.subtop1.pack(side=LEFT)
+        self.subtop2.pack(side=LEFT)
+        self.subtop3.pack(side=LEFT)
+        self.subtop4.pack(side=LEFT)
         #Bulk Density value
         self.bulkVar=StringVar()
         self.bulkLabel=ttk.Label(self.root,text="Bulk Density(g/cc)")
         self.bulkLabel.pack(in_=self.right)
-        self.bulkText=ttk.Entry(self.root,width=16,textvariable=self.bulkVar)
+        self.bulkText=tk.Spinbox(self.root,width=8,textvariable=self.bulkVar, from_=0, to=1000)
         self.bulkText.pack(in_=self.right)
-        self.bulkVar.set("0")
+        self.bulkVar.set("1")
 
         #Drop Density value
         self.dropVar=StringVar()
         self.dropLabel=ttk.Label(self.root,text="Drop Density(g/cc)")
         self.dropLabel.pack(in_=self.right)
-        self.dropText=ttk.Entry(self.root,width=16,textvariable=self.dropVar)
+        self.dropText=tk.Spinbox(self.root,width=8,textvariable=self.dropVar, from_=0, to=1000)
         self.dropText.pack(in_=self.right)
-        self.dropVar.set("0")
+        self.dropVar.set("1")
 
         #Reference size  (niddle size)
         self.referenceVar=StringVar()
         self.referenceLabel=ttk.Label(self.root,text="Reference Size(mm)")
         self.referenceLabel.pack(in_=self.right)
-        self.referenceText=ttk.Entry(self.root,width=16,textvariable=self.referenceVar)
+        self.referenceText=tk.Spinbox(self.root,width=8,textvariable=self.referenceVar, from_=0, to=1000)
         self.referenceText.pack(in_=self.right)
         self.referenceVar.set("1")
 
         # strat calibrating proccess (set left and right niddle coornidates)
         self.calibrateButton = Button(self.root,  text="Calibration",width=18, padx="2", pady="3",command=self.showCalibrate)
-        self.calibrateButton.pack(in_=self.right)
+        self.calibrateButton.pack(in_=self.subtop1)
 
         # show setting form
         self.settingButton = Button(self.root,  text="Setting",width=18, padx="2", pady="3",command=self.showSetting)
-        self.settingButton.pack(in_=self.right)
+        self.settingButton.pack(in_=self.subtop1)
 
         # creating start show expriment button 
         self.satrtButton = Button(self.root,  text="Start Analysis",width=18, padx="2", pady="3",command=self.threadCap)
-        self.satrtButton.pack(in_=self.right)
+        self.satrtButton.pack(in_=self.subtop2)
 
         # creating start record expriment button to excel
         self.recButton = Button(root,  text="Export CSV",width=18, padx="2", pady="3",command=self.startRec)
-        self.recButton.pack(in_=self.right)
+        self.recButton.pack(in_=self.subtop2)
         # 33333333333333333333333333333333
         self.chartButton = Button(root,  text="Show Chart",width=18, padx="2", pady="3",command=self.show_chart)
-        self.chartButton.pack(in_=self.right)
+        self.chartButton.pack(in_=self.subtop3)
         # creating start record expriment button to excel
         self.captureButton = Button(self.root,  text="Capture Frame",width=18, padx="2", pady="3",command=self.snapshot)
-        self.captureButton.pack(in_=self.right)
+        self.captureButton.pack(in_=self.subtop3)
 
-        # creating exit button 
+        # creating reset button 
         self.quitButton = Button(self.root, text="Reset",command=self.client_reset,width=18, padx="2", pady="3")
-        self.quitButton.pack(in_=self.right)
-
+        self.quitButton.pack(in_=self.subtop4)
+        # creating exit button 
+        self.quitButton = Button(self.root, text="Exit",command=self.client_reset,width=18, padx="2", pady="3")
+        self.quitButton.pack(in_=self.subtop4)
 
 
         # tree view to show temp analisys data
         self.IFTvar=StringVar()
         self.list_header=['Time','IFT']
         self.tree = ttk.Treeview(self.root,columns=self.list_header, show="headings")
-        self.tree.column("Time", width=60 )
-        self.tree.column("IFT", width=70)
+        self.tree.column("Time", width=40 )
+        self.tree.column("IFT", width=60)
         self.tree.heading("Time", text="Time")
         self.tree.heading("IFT", text="IFT")
         self.tree.pack(in_=self.right)
@@ -181,9 +182,6 @@ class App:
         self.analysis_switch=False
         self.config["p1x"]="0"
         self.config["p2x"]="0"
-        self.dropVar.set("0")
-        self.bulkVar.set("0")
-        self.referenceVar.set("1")
         self.experimentVar.set("myExpriment")
         self.tree.delete(*self.tree.get_children())
         self.csvList.clear()
@@ -227,10 +225,11 @@ class App:
         font=cv2.FONT_HERSHEY_PLAIN
         
         #find contours in edged capture, then grab the largest one
-        cnts = cv2.findContours(edged.copy(), cv2.RETR_EXTERNAL,
+        cnts = cv2.findContours(edged.copy(), cv2.RETR_TREE,
         cv2.CHAIN_APPROX_NONE)
         cnts = cnts[0] if imutils.is_cv2() else cnts[1]
         c = max(cnts, key=cv2.contourArea)
+        c=cnts[0]
         #cv2.drawContours(frame, [c], 0, (0,255,0), 1)
         # if the contour is not sufficiently large, ignore it
         cv2.drawContours(frame,c, 0, (0, 255, 0), 2)
@@ -282,7 +281,7 @@ class App:
 
 
         #calculate IFT 
-        delta=float(self.bulkVar.get())-float(self.dropVar.get())
+        delta=float(int(self.bulkVar.get()))-float(int(self.dropVar.get()))
         IFT=0.01*((delta*9.8*(DeMetric**2))/H)
 
         # print de and ds and S values in image
@@ -290,7 +289,7 @@ class App:
             cv2.rectangle(frame,(10,420),(630,470),(10,160,52),-1)
             cv2.putText(frame,"Time="+str(datetime.datetime.now().time().strftime('%H:%M:%S')),(10,440), font, 1.5, (150,20,100),1, cv2.LINE_AA)
             cv2.putText(frame,"IFT="+str(IFT),(10,460), font, 1.5, (200,0,0),1, cv2.LINE_AA)
-            self.tree.insert("" , 0, values=(str(datetime.datetime.now().time().strftime('%H:%M:%S')),str(IFT)))
+            self.tree.insert("" , 0, values=(str(datetime.datetime.now().time().strftime('%M:%S')),str(IFT)))
             self.csvList.append([str(datetime.datetime.now().time().strftime('%H:%M:%S')),str(IFT)])
         if ret:
             self.photo = PIL.ImageTk.PhotoImage(image = PIL.Image.fromarray(frame))
@@ -310,20 +309,21 @@ class Do_Analysis:
         #read configuration file and put it to config array
         config = ConfigObj('conf.cnf')
         # Open the video source
-        self.vid = cv2.VideoCapture(config["path"])
+        self.vid = cv2.VideoCapture(int(config["path"]))
         if not self.vid.isOpened():
             raise ValueError("Unable to open video source", video_source)
  
         # Get video source width and height
-        self.width = self.vid.get(cv2.CAP_PROP_FRAME_WIDTH)
-        self.height = self.vid.get(cv2.CAP_PROP_FRAME_HEIGHT)
+        self.width = self.vid.get(cv2.CAP_PROP_FRAME_WIDTH)/1.333
+        self.height = self.vid.get(cv2.CAP_PROP_FRAME_HEIGHT)/1.333
     def get_frame(self):
         if self.vid.isOpened():
             #read configuration file
             ret, frame = self.vid.read()
+            smallFrame = cv2.resize(frame, (530, 397)) 
             if ret:
                 # Return a boolean success flag and the current frame converted to BGR
-                return (ret, frame)
+                return (ret, smallFrame)
                 config.clear()
             else:
                 return (ret, None)
