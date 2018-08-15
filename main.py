@@ -320,10 +320,10 @@ class Do_Analysis:
         if self.vid.isOpened():
             #read configuration file
             ret, frame = self.vid.read()
-            smallFrame = cv2.resize(frame, (530, 397)) 
+            frame = cv2.resize(frame, (530, 397)) 
             if ret:
                 # Return a boolean success flag and the current frame converted to BGR
-                return (ret, smallFrame)
+                return (ret, frame)
                 config.clear()
             else:
                 return (ret, None)
