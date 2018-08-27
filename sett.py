@@ -1,6 +1,6 @@
 import tkinter as tk
 import cv2
-import PIL.Image, PIL.ImageTk
+#import PIL.Image, PIL.ImageTk
 import time
 from configobj import ConfigObj
 from tkinter import *
