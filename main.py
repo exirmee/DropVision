@@ -4,6 +4,8 @@ from tkinter import ttk
 from tkinter import *
 import cv2
 import threading
+from threading import *
+import time
 import sys
 from sett import sett
 from sett import  ALL
@@ -19,7 +21,7 @@ from tkinter import filedialog
 from shutil import copyfile
 import matplotlib.pyplot as plt
 
-class App:
+class App(threading.Thread):
     def __init__(self, root, window_title, video_source=0):
         self.root = root
         self.root.title(window_title)
@@ -27,14 +29,12 @@ class App:
         self.analysis_switch=False
         self.show_switch=False
         self.csvList=[]
+
         #read configuration file
         self.config = ConfigObj('conf.cnf')
         
-        self.delay = self.config["interval"]
-
-        #open video source (by default this will try to open the computer webcam)
-        self.vid = Do_Analysis(int(self.config["path"]))
-     
+        self.delay = int(self.config["interval"])/100
+   
         # create the main sections of the layout, and lay them out
         self.top=Frame(self.root)
         self.bottom=Frame(self.root)
@@ -53,28 +53,23 @@ class App:
         self.subtop3.pack(side=LEFT)
         self.subtop4.pack(side=LEFT)
         #Bulk Density value
-        self.bulkVar=StringVar()
-        self.bulkLabel=ttk.Label(self.root,text="Bulk Density(g/cc)")
+        self.bulkLabel=ttk.Label(self.root,text="Bulk Density(g/cc) / 100")
         self.bulkLabel.pack(in_=self.right)
-        self.bulkText=tk.Spinbox(self.root,width=8,textvariable=self.bulkVar, from_=0, to=1000)
-        self.bulkText.pack(in_=self.right)
-        self.bulkVar.set("1")
+        self.bulkSlider = tk.Scale(self.root, from_=50, to=150, orient="horizontal")
+        self.bulkSlider.pack(in_=self.right)
 
         #Drop Density value
-        self.dropVar=StringVar()
-        self.dropLabel=ttk.Label(self.root,text="Drop Density(g/cc)")
+        self.dropLabel=ttk.Label(self.root,text="Drop Density(g/cc) / 100")
         self.dropLabel.pack(in_=self.right)
-        self.dropText=tk.Spinbox(self.root,width=8,textvariable=self.dropVar, from_=0, to=1000)
-        self.dropText.pack(in_=self.right)
-        self.dropVar.set("1")
+        self.dropSlider = tk.Scale(self.root, from_=50, to=150, orient="horizontal")
+        self.dropSlider.pack(in_=self.right)
 
         #Reference size  (niddle size)
-        self.referenceVar=StringVar()
-        self.referenceLabel=ttk.Label(self.root,text="Reference Size(mm)")
+        self.referenceLabel=ttk.Label(self.root,text="Reference Size(mm) / 100")
         self.referenceLabel.pack(in_=self.right)
-        self.referenceText=tk.Spinbox(self.root,width=8,textvariable=self.referenceVar, from_=0, to=1000)
-        self.referenceText.pack(in_=self.right)
-        self.referenceVar.set("1")
+        self.referenceSlider = tk.Scale(self.root, from_=50, to=200, orient="horizontal")
+        self.referenceSlider.pack(in_=self.right)
+
         
         
 
@@ -85,7 +80,7 @@ class App:
         self.showButton.pack(in_=self.subtop1)
        
         # creating start show expriment button 
-        self.satrtButton = Button(self.root,  text="Start Analysis",image=self.playIcon,width=120, padx="2", pady="3",command=self.threadCap,compound=LEFT)
+        self.satrtButton = Button(self.root,  text="Start Analysis",image=self.playIcon,width=120, padx="2", pady="3",command=self.startAnalysis,compound=LEFT)
         self.satrtButton.pack(in_=self.subtop1)
         
         # strat calibrating proccess (set left and right niddle coornidates)
@@ -131,7 +126,7 @@ class App:
         self.tree.pack(in_=self.right)
         
         # Create a canvas that can fit the above video source size
-        self.canvas = tk.Canvas(root, width = self.vid.width, height = self.vid.height, cursor="crosshair")
+        self.canvas = tk.Canvas(root, width = 530, height = 397, cursor="crosshair")
         self.canvas.pack(in_=self.left)
         
         
@@ -164,27 +159,26 @@ class App:
 
     #show the setting modul when button clicked
     def showSetting(self):
-        if self.analysis_switch==True:
-            self.satrtButton["text"]="Start Analysis"
-            self.analysis_switch=False
         sett.fire()
 
     #show stream job and change button text    
     def showStram(self):
+        
         if self.show_switch:
-            
-            self.showButton["text"]="PlayStream"
+            self.showButton["text"]="StartStream"
             self.showButton.configure(image=self.playIcon)
             self.show_switch=False
+
         else:
             self.showButton["text"]="StopStream"
-            
             self.show_switch=True
             self.showButton.configure(image=self.stopIcon)
-            self.root.after(self.delay, self.updateShow)
+            self.showTimer=threading.Thread(target=self.updateShow,args=())
+            #self.showTimer.daemon=True
+            self.showTimer.start()
 
     #start analysis job and change button text    
-    def threadCap(self):
+    def startAnalysis(self):
         if self.analysis_switch:
             self.satrtButton["text"]="Start Analysis"
             self.satrtButton.configure(image=self.playIcon)
@@ -194,9 +188,9 @@ class App:
             self.satrtButton["text"]="Stop Analysis"
             self.satrtButton.configure(image=self.stopIcon)
             self.analysis_switch=True
-            self.root.after(self.delay, self.update)
-
-        Do_Analysis()
+            self.updateTimer=threading.Thread(target=self.update,args=())
+            #self.updateTimer.daemon=True
+            self.updateTimer.start()
     
     # open save dialouge and save csv file 
     def startRec(self):
@@ -231,189 +225,162 @@ class App:
     def update(self):
         #read configuration file and put it to config array
         config = ConfigObj('conf.cnf')
-        self.delay = config["interval"]
         cap=cv2.VideoCapture(int(config["path"]))
-        if cap.isOpened():
-            # Get a frame from the video source
+        while True:
+            if cap.isOpened():
+                print(self.delay)
+                # Get a frame from the video source
 
-            ret, frame = cap.read()
-            frame = cv2.resize(frame, (530, 397)) 
-            #read frame from video and convert to gray then thresh then find edge
-            if config["Ds"]=="top":
-                frame = cv2.flip(frame, 1)
-            elif  config["Ds"]=="down":
-                frame = cv2.flip(frame, 0) 
+                ret, frame = cap.read()
+                frame = cv2.resize(frame, (530, 397)) 
+                if ret:
+                    #read frame from video and convert to gray then thresh then find edge
+                    if config["Ds"]=="top":
+                        frame = cv2.flip(frame, 1)
+                    elif  config["Ds"]=="down":
+                        frame = cv2.flip(frame, 0) 
         
-            #do prosecc on  raw image frame  
-            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            blur=cv2.GaussianBlur(gray, (7, 7), 0)
-            #drop2=118 drop3=180
-            flag, thresh = cv2.threshold(blur,int(config["cannyth1"]),255 , cv2.THRESH_BINARY)     
-            edged=cv2.Canny(thresh,50,100)
-            edged = cv2.dilate(edged, None, iterations=1)
-            edged = cv2.erode(edged, None, iterations=1)
+                    #do prosecc on  raw image frame  
+                    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                    blur=cv2.GaussianBlur(gray, (7, 7), 0)
+                    #drop2=118 drop3=180
+                    flag, thresh = cv2.threshold(blur,int(config["cannyth1"]),255 , cv2.THRESH_BINARY)     
+                    edged=cv2.Canny(thresh,50,100)
+                    edged = cv2.dilate(edged, None, iterations=1)
+                    edged = cv2.erode(edged, None, iterations=1)
 
-            #define niddle ratio 
-            distance=abs(int(config["p1x"])-int(config["p2x"]))
-            ratio=float(distance)/float(self.referenceVar.get())
-            #define font style
-            font=cv2.FONT_HERSHEY_PLAIN
+                    #define niddle ratio 
+                    distance=abs(int(config["p1x"])-int(config["p2x"]))
+                    ratio=float(distance)/float(self.referenceSlider.get())
+                    #define font style
+                    font=cv2.FONT_HERSHEY_PLAIN
         
-            #find contours in edged capture, then grab the largest one
-            cnts = cv2.findContours(edged.copy(), cv2.RETR_TREE,
-            cv2.CHAIN_APPROX_NONE)
-            cnts = cnts[0] if imutils.is_cv2() else cnts[1]
-            if cnts:
-                c = max(cnts, key=cv2.contourArea)
-                c=cnts[0]
-                #cv2.drawContours(frame, [c], 0, (0,255,0), 1)
-                # if the contour is not sufficiently large, ignore it
-                cv2.drawContours(frame,c, 0, (0, 255, 0), 2)
+                    #find contours in edged capture, then grab the largest one
+                    cnts = cv2.findContours(edged.copy(), cv2.RETR_TREE,
+                    cv2.CHAIN_APPROX_NONE)
+                    cnts = cnts[0] if imutils.is_cv2() else cnts[1]
+                    if cnts:
+                        c = max(cnts, key=cv2.contourArea)
+                        c=cnts[0]
+                        #cv2.drawContours(frame, [c], 0, (0,255,0), 1)
+                        # if the contour is not sufficiently large, ignore it
+                        cv2.drawContours(frame,c, 0, (0, 255, 0), 2)
 
-                # determine the most extreme points along the contour
-                deRight = tuple(c[c[:, :, 0].argmax()][0])
-                deLeftTemp = tuple(c[c[:, :, 0].argmin()][0])
-                deLeft = (deLeftTemp[0],deRight[1])
-                deMid=int(round((deRight[0]+deLeft[0])/2))
-                deDownTemp = tuple(c[c[:, :, 1].argmax()][0])
-                deDown= (deMid,deDownTemp[1])
-                deTopTemp=abs(abs(deDown[1])-abs(deLeft[0]-deRight[0]))
-                deTop= (deDown[0],deTopTemp)
-                # dsTemp is the coornidates of countour that is same as deTop
-                dsTemp=c[np.where(c[:,:,:]==deTop[1]), 0 ][0]
+                        # determine the most extreme points along the contour
+                        deRight = tuple(c[c[:, :, 0].argmax()][0])
+                        deLeftTemp = tuple(c[c[:, :, 0].argmin()][0])
+                        deLeft = (deLeftTemp[0],deRight[1])
+                        deMid=int(round((deRight[0]+deLeft[0])/2))
+                        deDownTemp = tuple(c[c[:, :, 1].argmax()][0])
+                        deDown= (deMid,deDownTemp[1])
+                        deTopTemp=abs(abs(deDown[1])-abs(deLeft[0]-deRight[0]))
+                        deTop= (deDown[0],deTopTemp)
+                        # dsTemp is the coornidates of countour that is same as deTop
+                        dsTemp=c[np.where(c[:,:,:]==deTop[1]), 0 ][0]
         
-                #define ds and de
-                DsMetric=0.0
-                DeMetric=0.0
+                        #define ds and de
+                        DsMetric=0.0
+                        DeMetric=0.0
 
-                # if dsTemp has coornidates then grab most left and most right and put it to dsLeft,dsRight
-                if dsTemp.size:
-                    dsLeft=(np.amax(dsTemp[:,0]),deTop[1])
-                    dsRight=(np.amin(dsTemp[:,0]),deTop[1])
-                    # put circles and coordinates of dsLeft and dsRight in screen
-                    cv2.circle(frame, dsLeft, 5, (0, 255, 12), -1)
-                    cv2.circle(frame, dsRight, 5, (0, 255, 12), -1)
-                    #calculate distance bitween Dsleft and dsright points
-                    DsPixel = np.sqrt( (dsRight[0] - dsLeft[0])**2 + (dsRight[1] - dsLeft[1])**2 )
-                    DsMetric=DsPixel/ratio
+                        # if dsTemp has coornidates then grab most left and most right and put it to dsLeft,dsRight
+                        if dsTemp.size:
+                            dsLeft=(np.amax(dsTemp[:,0]),deTop[1])
+                            dsRight=(np.amin(dsTemp[:,0]),deTop[1])
+                            # put circles and coordinates of dsLeft and dsRight in screen
+                            cv2.circle(frame, dsLeft, 5, (0, 255, 12), -1)
+                            cv2.circle(frame, dsRight, 5, (0, 255, 12), -1)
+                            #calculate distance bitween Dsleft and dsright points
+                            DsPixel = np.sqrt( (dsRight[0] - dsLeft[0])**2 + (dsRight[1] - dsLeft[1])**2 )
+                            DsMetric=DsPixel/ratio
         
-                # put circles and coordinates of deLeft and deRight and deTop and deDown in screen
-                cv2.circle(frame, deLeft, 5, (0, 0, 255), -1)
-                cv2.circle(frame, deRight, 5, (0, 0, 255), -1)
-                cv2.circle(frame, deTop, 5, (0, 0, 255), -1)
-                cv2.circle(frame, deDown, 5, (0, 0, 255), -1)
+                        # put circles and coordinates of deLeft and deRight and deTop and deDown in screen
+                        cv2.circle(frame, deLeft, 5, (0, 0, 255), -1)
+                        cv2.circle(frame, deRight, 5, (0, 0, 255), -1)
+                        cv2.circle(frame, deTop, 5, (0, 0, 255), -1)
+                        cv2.circle(frame, deDown, 5, (0, 0, 255), -1)
     
 
-                #calculate distance bitween Deleft and deright points
-                DePixel = np.sqrt( (deRight[0] - deLeft[0])**2 + (deRight[1] - deLeft[1])**2 )
-                DeMetric=DePixel/ratio
+                        #calculate distance bitween Deleft and deright points
+                        DePixel = np.sqrt( (deRight[0] - deLeft[0])**2 + (deRight[1] - deLeft[1])**2 )
+                        DeMetric=DePixel/ratio
 
-                #calculate S
-                S=DsMetric/DeMetric
-                H=0
-                if S>0:
-                    #calculat H
-                    H=0.3168*S**(-2.612)
+                        #calculate S
+                        S=DsMetric/DeMetric
+                        H=0
+                        if S>0:
+                            #calculat H
+                            H=0.3168*S**(-2.612)
         
 
-                #calculate IFT 
-                delta=float(self.bulkVar.get())-float(self.dropVar.get())
-                IFT=0
-                if H>0:
-                    IFT=0.01*((delta*9.8*(DeMetric**2))/H)
+                        #calculate IFT 
+                        delta=float(self.bulkSlider.get())-float(self.dropSlider.get())
+                        IFT=0
+                        if H>0:
+                            IFT=0.01*((delta*9.8*(DeMetric**2))/H)
 
-                # print de and ds and S values in image
-                if S>0 and H>0 and IFT>0:
-                    cv2.rectangle(frame,(10,420),(630,470),(10,160,52),-1)
-                    cv2.putText(frame,"Time="+str(datetime.datetime.now().time().strftime('%H:%M:%S')),(10,440), font, 1.5, (150,20,100),1, cv2.LINE_AA)
-                    cv2.putText(frame,"IFT="+str(IFT),(10,460), font, 1.5, (200,0,0),1, cv2.LINE_AA)
-                    self.tree.insert("" , 0, values=(str(datetime.datetime.now().time().strftime('%M:%S')),str(IFT)))
-                    self.csvList.append([str(datetime.datetime.now().time().strftime('%H:%M:%S')),str(IFT)])
+                        # print de and ds and S values in image
+                        if S>0 and H>0 and IFT>0:
+                            cv2.rectangle(frame,(10,420),(630,470),(10,160,52),-1)
+                            cv2.putText(frame,"Time="+str(datetime.datetime.now().time().strftime('%H:%M:%S')),(10,440), font, 1.5, (150,20,100),1, cv2.LINE_AA)
+                            cv2.putText(frame,"IFT="+str(IFT),(10,460), font, 1.5, (200,0,0),1, cv2.LINE_AA)
+                            self.tree.insert("" , 0, values=(str(datetime.datetime.now().time().strftime('%M:%S')),str(IFT)))
+                            self.csvList.append([str(datetime.datetime.now().time().strftime('%H:%M:%S')),str(IFT)])
         
-            else:
-                print('i cant detect object pls customize and define setting')
-            if ret:
-                self.photo = PIL.ImageTk.PhotoImage(image = PIL.Image.fromarray(frame))
-                self.canvas.create_image(0, 0, image = self.photo, anchor = tk.NW)
-                self.canvas.bind("<Button-1>",self.DoCalibrate)
+                    else:
+                        print('i cant detect object pls customize and define setting')
+                
+                    self.photo = PIL.ImageTk.PhotoImage(image = PIL.Image.fromarray(frame))
+                    self.canvas.create_image(0, 0, image = self.photo, anchor = tk.NW)
+                    self.canvas.bind("<Button-1>",self.DoCalibrate)
         
-            if self.analysis_switch==True:
-                self.satrtButton["text"]="Stop Analysis"
-                self.root.after(self.delay, self.update)
-        else:
-            raise ValueError("Unable to open video source", video_source)
-
+                    if self.analysis_switch==False:
+                        return False
+                        ConfigObj.clear(config)
+                        cap.release()
+                else:
+                    raise ValueError("Unable to open video source", video_source)
+            time.sleep(self.delay)
         #clear the config object
         ConfigObj.clear(config)
-
+        cap.release()
     def updateShow(self):
         #read configuration file and put it to config array
         config = ConfigObj('conf.cnf')
-        delay = config["interval"]
         # Get a frame from the video source
         cap=cv2.VideoCapture(int(config["path"]))
-        
-        if cap.isOpened():
-            #read the frame from cap
-            ret, frame = cap.read()
+        while True:    
+            if(cap.isOpened()):
+                #read the frame from cap
+                ret, frame = cap.read()
             
-            #resize frame for raspberry
-            frame = cv2.resize(frame, (530, 397)) 
-        
-            #flip frame by the niddle sittulation
-            if config["Ds"]=="top":
-                frame = cv2.flip(frame, 1)
-            elif  config["Ds"]=="down":
-                frame = cv2.flip(frame, 0) 
-            if ret:
-                self.photo = PIL.ImageTk.PhotoImage(image = PIL.Image.fromarray(frame))
-                self.canvas.create_image(0, 0, image = self.photo, anchor = tk.NW)
-                self.canvas.bind("<Button-1>",self.DoCalibrate)
-        
-            if self.show_switch==True:
-                self.showButton["text"]="StopStream" 
-                self.root.after(delay, self.updateShow)
-        
-        else:
-            raise ValueError("Unable to open video source", video_source)
-            
+                if ret:
+                    #flip frame by the niddle sittulation
+                    if config["Ds"]=="top":
+                        frame = cv2.flip(frame, 1)
+                    elif  config["Ds"]=="down":
+                        frame = cv2.flip(frame, 0) 
+                
+                    #resize frame for raspberry pi
+                    frame = cv2.resize(frame, (530, 397)) 
+
+                    #show frame in main window
+                    self.photo = PIL.ImageTk.PhotoImage(image = PIL.Image.fromarray(frame))
+                    self.canvas.create_image(0, 0, image = self.photo, anchor = tk.NW)
+                    self.canvas.bind("<Button-1>",self.DoCalibrate)
+                    
+                else:
+                    break
+                    raise ValueError("Unable to open video source", video_source)
+           
+           
+                if self.show_switch==False:
+                    return False
+                    cap.release()
+                    ConfigObj.clear(config)
+            time.sleep(0.01)    
         #clear the config object
         ConfigObj.clear(config)
-
-class Do_Analysis:
-#get video streaming path and set the frame width and height class Do_Analysis:
-    def __init__(self, video_source=0):
+        cap.release()
         
-        #read configuration file and put it to config array
-        config = ConfigObj('conf.cnf')
-        # Open the video source
-        self.vid = cv2.VideoCapture(int(config["path"]))
-        if not self.vid.isOpened():
-            raise ValueError("Unable to open video source", video_source)
- 
-        # Get video source width and height
-        self.width = self.vid.get(cv2.CAP_PROP_FRAME_WIDTH)/1.333
-        self.height = self.vid.get(cv2.CAP_PROP_FRAME_HEIGHT)/1.333
-    def get_frame(self):
-        if self.vid.isOpened():
-            #read configuration file
-            vid = cv2.VideoCapture(int(config["path"]))
-            
-            ret, frame = vid.read()
-            frame = cv2.resize(frame, (530, 397)) 
-            if ret:
-                # Return a boolean success flag and the current frame converted to BGR
-                return (ret, frame)
-                config.clear()
-            else:
-                return (ret, None)
-        else:
-            return (ret, None)
-
-        # Release the video source when the object is destroyed
-    def __del__(self):
-        if self.vid.isOpened():
-            self.vid.release()
-
 # Create a window and pass it to the Application object
 App(tk.Tk(), "DropVision Main")

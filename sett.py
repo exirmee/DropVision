@@ -42,7 +42,7 @@ class sett():
         #scale widget for Analysis Speed in second
         self.lbl4=tk.Label(window,text="Analysis Speed(ms)")
         self.lbl4.pack(in_=self.right)
-        self.SpeedText=tk.Scale(window,from_=1,to=2000,orient="horizontal")
+        self.SpeedText=tk.Scale(window,from_=1,to=500,orient="horizontal")
         self.SpeedText.pack(in_=self.right)
   
         #chekbox widget for niddle is top or down 
