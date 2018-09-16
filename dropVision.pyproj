@@ -34,6 +34,7 @@
     <Compile Include="test.py">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="test2.py" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="conf.cnf" />

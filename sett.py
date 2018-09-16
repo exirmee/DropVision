@@ -13,7 +13,10 @@ class sett():
     def __init__(self, window, window_title):
         self.window = window
         self.window.title(window_title)
-
+        self.window.overrideredirect(True)
+        self.window.geometry("{0}x{1}+0+0".format(self.window.winfo_screenwidth(),self.window.winfo_screenheight()))
+        self.window.focus_set()
+        self.window.bind("<Escape>",lambda e: e.widget.quit())
         # create the main sections of the layout, 
         # and lay them out
         self.left = Frame(window)
@@ -52,7 +55,7 @@ class sett():
         self.dsCombo.pack(in_=self.right)
         
         #preview button 
-        self.btnPre=tk.Button(window,text="Preview!",command=self.start_preview)
+        self.btnPre=tk.Button(window,text="exit!",command=self.client_exit)
         self.btnPre.pack(in_=self.right)
 
         #submit button for changes 
@@ -71,6 +74,11 @@ class sett():
 
         
         self.window.mainloop()
+        
+    def client_exit(self):
+        self.window.quit()
+        self.window.destroy()
+        
     def start_preview(self):
         t=threading.Thread(target=self.show_preview)
         t.start()

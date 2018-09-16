@@ -1,7 +1,11 @@
 path = 0
-cannyth1 = 94
-bright = 191
-Ds = down
-interval = 100
-p1x = 367
-p2x = 397
+cannyth1 = 64
+bright = 199
+Ds = top
+interval = 24
+p1x = 259
+p2x = 310
+drop = 89
+bulk = 1
+niddle1 = 0
+niddle2 = 50
