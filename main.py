@@ -152,11 +152,11 @@ class App():
         self.panelButton.pack(in_=self.left)
 
         #logo image and text
-        self.logoImg = Image.open('koupal.jpg')
+        self.logoImg = Image.open('logo.png')
         self.tkimage = ImageTk.PhotoImage(self.logoImg)
         self.logoImg=tk.Label(root, image=self.tkimage,width=110,height=30)
         self.logoImg.pack(in_=self.left)
-        self.logoLabel=ttk.Label(self.root,text=" شرکت تامين و توسعه \n انرژي کوپال")
+        self.logoLabel=ttk.Label(self.root,text="  ")
         self.logoLabel.pack(in_=self.left)
 
         self.root.mainloop()
@@ -228,8 +228,6 @@ class App():
                 self.config.write()
                 messagebox.showinfo("Calibrate", "calibration compeleted!")
     def DoMask(self,event, x, y, flags, param):
-        
-        
         if event == cv2.EVENT_LBUTTONDOWN:
             cv2.circle(self.frame,(x,y),50,(255,0,0),-1)
             cv2.circle(self.mask_img,(x,y),50,(255,0,0),-1)
@@ -241,16 +239,9 @@ class App():
     
     #show stream job and change button text for mask data
     def showMask(self):
-        messagebox.showinfo("edit mask", "please paint in mask areas with left-click and then hit escape!")
-        if self.mask_switch:
-            self.mask_switch=False
-            self.maskButtun["text"]="Edit Mask"
-
-        else:
-            self.mask_switch=True
-            self.maskButtun["text"]="End Editing"
-            self.maskShow()
- 
+        messagebox.showinfo("edit mask", """please paint in mask areas with left-click and then hit "q" on keyboard!""")
+        from edit_mask import edit_mask
+        edit_mask()
 
     #show stream job and change button text
     def showStram(self):
@@ -345,7 +336,8 @@ class App():
                     gray = cv2.cvtColor(self.frame, cv2.COLOR_BGR2GRAY)
                     blur=cv2.GaussianBlur(gray, (7, 7), 0)
                     flag, thresh = cv2.threshold(blur,int(config["cannyth1"]),255 , cv2.THRESH_BINARY)
-                    edged=cv2.Canny(thresh,50,100)
+                    invert = 255 - thresh
+                    edged=cv2.Canny(invert,50,100)
                     edged = cv2.dilate(edged, None, iterations=1)
                     edged = cv2.erode(edged, None, iterations=1)
 
@@ -360,13 +352,13 @@ class App():
                     #define font style
                     font=cv2.FONT_HERSHEY_PLAIN
 
+                    
                     #ماسک کردن دایره در تصویر جهت محاسبه دقیقتر
-                    circle_img = cv2.imread('mask.jpg')
-                    circle_img = cv2.cvtColor(circle_img, cv2.COLOR_BGR2GRAY)
-                    
-                    
-                    masked_data = cv2.bitwise_and(edged, edged, mask=circle_img)
-                    
+                    masked_img = cv2.imread('masked.png')
+                    masked_img = cv2.cvtColor(masked_img, cv2.COLOR_BGR2GRAY) 
+                    masked_data = cv2.bitwise_and(invert, invert, mask=masked_img)
+                                    
+                                        
                     #find contours in edged capture, then grab the largest one
                     contours,hierarchy = cv2.findContours(masked_data.copy(), cv2.RETR_TREE,cv2.CHAIN_APPROX_NONE)
 
@@ -374,10 +366,8 @@ class App():
                     if contours:
                         c=max(contours,key=cv2.contourArea)
                         
-                        
-
                         #کشیدن ماسک محدوده اندازه گیری
-                        mask_contours,mask_hierarchy = cv2.findContours(circle_img.copy(), cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+                        mask_contours,mask_hierarchy = cv2.findContours(masked_img.copy(), cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
                         mask_c=max(mask_contours,key=cv2.contourArea)
                         cv2.drawContours(self.frame, [mask_c], -1, (255, 0, 0), 1)
                         
@@ -539,7 +529,7 @@ class App():
                     self.frame = cv2.flip(frame, 0)
  
                 #کشیدن ماسک محدوده اندازه گیری
-                circle_img = cv2.imread('mask.jpg')
+                circle_img = cv2.imread('masked.png')
                 circle_img = cv2.cvtColor(circle_img, cv2.COLOR_BGR2GRAY)
                 mask_contours,mask_hierarchy = cv2.findContours(circle_img.copy(), cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
                 mask_c=max(mask_contours,key=cv2.contourArea)
