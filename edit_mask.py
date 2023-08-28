@@ -1,16 +1,25 @@
 import cv2
 import numpy as np
 import screeninfo
-
+from configobj import ConfigObj
 # Initialize the camera capture
 cap = cv2.VideoCapture(0)  # 0 represents the default camera
 def edit_mask():
     #read monitor information
     screen = screeninfo.get_monitors()[0]
     width, height = screen.width, screen.height
+    config = ConfigObj('conf.cnf')
+
     while True:
         # Capture a frame from the camera
         ret, frame = cap.read()
+
+        #read frame from video and convert to gray then thresh then find edge
+        if config["Ds"]=="top":
+            frame = cv2.flip(frame, 1)
+        elif  config["Ds"]=="down":
+            frame = cv2.flip(frame, 0)
+
         masked = np.zeros_like(frame)
         # Variables to keep track of drawing state
         drawing = False
@@ -44,9 +53,9 @@ def edit_mask():
         cv2.setMouseCallback('masked', draw_shape)
 
         while True:
-            #cv2.namedWindow('frame', cv2.WND_PROP_FULLSCREEN)
-            #cv2.moveWindow('frame', screen.x - 1, screen.y - 1)
-            #cv2.setWindowProperty('frame', cv2.WND_PROP_FULLSCREEN,cv2.WINDOW_FULLSCREEN)
+            cv2.namedWindow('masked', cv2.WND_PROP_FULLSCREEN)
+            cv2.moveWindow('masked', screen.x - 1, screen.y - 1)
+            cv2.setWindowProperty('masked', cv2.WND_PROP_FULLSCREEN,cv2.WINDOW_FULLSCREEN)
             cv2.imshow('masked', frame)
             key = cv2.waitKey(1) & 0xFF
             if key == ord('q'):
