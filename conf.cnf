@@ -1,10 +1,10 @@
 path = 0
 cannyth1 = 161
 bright = 165
-Ds = down
+Ds = top
 interval = 100
-p1x = 302
-p2x = 339
+p1x = 421
+p2x = 454
 drop = 1
 bulk = 1000
 niddle1 = 0
