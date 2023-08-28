@@ -13,15 +13,19 @@ This Python application is designed to facilitate the measurement of Interfacial
 ## Screenshots
 
 ![Screenshot 1](sc1.jpg)
+
 *Fig. 1:  Live crude oil injection to create a pendant drop.*
 
 ![Screenshot 2](sc2.jpg)
+
 *Fig. 2: Main GUI interface for IFT measurement*
 
 ![Screenshot 3](sc3.jpg)
+
 *Fig. 3: The live output of the results can be saved in a CSV file.*
 
 ![Screenshot 4](sc4.jpg)
+
 *Fig. 4: Real-time Result of IFT measurements.*
 
 ## How It Works
